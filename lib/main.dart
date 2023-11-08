@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -8,125 +9,130 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a blue toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyFirestorePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
+class MyFirestorePage extends StatefulWidget {
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  _MyFirestorePageState createState() => _MyFirestorePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _MyFirestorePageState extends State<MyFirestorePage> {
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  // 作成したドキュメント一覧
+  List<DocumentSnapshot> documentList = [];
+
+  // 指定したドキュメントの情報
+  String orderDocumentInfo = '';
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+            ElevatedButton(
+              child: Text('コレクション＋ドキュメント作成'),
+              onPressed: () async {
+                // ドキュメント作成
+                await FirebaseFirestore.instance
+                    .collection('users') // コレクションID
+                    .doc('id_ghi') // ドキュメントID
+                    .set({'name': '田中', 'age': 20}); // データ
+              },
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            ElevatedButton(
+              child: Text('サブコレクション＋ドキュメント作成'),
+              onPressed: () async {
+                // サブコレクション内にドキュメント作成
+                await FirebaseFirestore.instance
+                    .collection('users') // コレクションID
+                    .doc('id_abc') // ドキュメントID << usersコレクション内のドキュメント
+                    .collection('orders') // サブコレクションID
+                    .doc('id_123') // ドキュメントID << サブコレクション内のドキュメント
+                    .set({'price': 600, 'date': '9/13'}); // データ
+              },
+            ),
+            ElevatedButton(
+              child: Text('ドキュメント一覧取得'),
+              onPressed: () async {
+                // コレクション内のドキュメント一覧を取得
+                final snapshot =
+                await FirebaseFirestore.instance.collection('users').get();
+                // 取得したドキュメント一覧をUIに反映
+                setState(() {
+                  documentList = snapshot.docs;
+                });
+              },
+            ),
+            // コレクション内のドキュメント一覧を表示
+            Column(
+              children: documentList.map((document) {
+                return ListTile(
+                  title: Text('${document['name']}さん'),
+                  subtitle: Text('${document['age']}歳'),
+                );
+              }).toList(),
+            ),
+            ElevatedButton(
+              child: Text('ドキュメントを指定して取得'),
+              onPressed: () async {
+                // コレクションIDとドキュメントIDを指定して取得
+                final document = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc('id_abc')
+                    .collection('orders')
+                    .doc('id_123')
+                    .get();
+                // 取得したドキュメントの情報をUIに反映
+                setState(() {
+                  orderDocumentInfo =
+                  '${document['date']} ${document['price']}円';
+                });
+              },
+            ),
+            // ドキュメントの情報を表示
+            ListTile(title: Text(orderDocumentInfo)),
+            ElevatedButton(
+              child: Text('ドキュメント更新'),
+              onPressed: () async {
+                // ドキュメント更新
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc('id_abc')
+                    .update({'age': 41});
+              },
+            ),
+            ElevatedButton(
+              child: Text('ドキュメント削除'),
+              onPressed: () async {
+                // ドキュメント削除
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc('id_abc')
+                    .collection('orders')
+                    .doc('id_123')
+                    .delete();
+              },
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
